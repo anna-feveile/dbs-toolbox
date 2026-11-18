@@ -685,7 +685,7 @@ def transform_surgical_csv(
 
                 # Calculate position 5mm below target for this track type (for visualization)
                 mer_target, mer_entry = calculate_mer_track_position(
-                    target, ring, arc, track_type, depth_mm=5.0
+                    target, ring, arc, track_type, depth_mm=0.0
                 )
                 track_targets.append(mer_target)
                 track_entries.append(mer_entry)
