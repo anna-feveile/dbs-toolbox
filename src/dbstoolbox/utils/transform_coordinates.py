@@ -876,8 +876,8 @@ def transform_surgical_csv(
 
         for n, valid_idx in enumerate(positions['research_indices']):
             for a, axis in enumerate('xyz'):
-                csv_data[valid_idx][f'mer_{track_type}_research_target_{axis}'] = f"{positions['research'][n, a]:.2f}"
-                csv_data[valid_idx][f'mer_{track_type}_research_lfp_{axis}'] = f"{positions['lfps'][n, a]:.2f}"
+                csv_data[valid_idx][f'research_{track_type}_target_{axis}'] = f"{positions['research'][n, a]:.2f}"
+                csv_data[valid_idx][f'research_{track_type}_lfp_{axis}'] = f"{positions['lfps'][n, a]:.2f}"
 
     return csv_data
 
