@@ -590,6 +590,9 @@ def transform_surgical_csv(
     clinical_targets = []
     research_targets = []
 
+    # Define distance between electrode tip and lfp ring
+    LFP_OFFSET_MM = 1.5
+
     # Track unique MER track types that appear in the data
     mer_track_types = set()
 
@@ -667,6 +670,10 @@ def transform_surgical_csv(
         track_entries = []
         track_valid_indices = []
 
+        track_research = []
+        track_lfps = []
+        track_research_indices = []
+
         for i in valid_indices:
             try:
                 row = csv_data[i]
@@ -684,6 +691,16 @@ def transform_surgical_csv(
                 track_targets.append(mer_target)
                 track_entries.append(mer_entry)
                 track_valid_indices.append(i)
+
+                try:
+                    depth = float(row.get('research_depth') or 0.0)
+                    r_t, r_e = calculate_mer_track_position(target, ring, arc, track_type, depth_mm = depth)
+                    lfp = r_t - (r_t - r_e) / np.linalg.norm(r_t - r_e) * LFP_OFFSET_MM
+                    track_research.append(r_t)
+                    track_lfps.append(lfp)
+                    track_research_indices.append(i)
+                except (ValueError, TypeError):
+                    pass
             except:
                 continue
 
@@ -691,7 +708,10 @@ def transform_surgical_csv(
             mer_track_positions[track_type] = {
                 'targets': np.array(track_targets),
                 'entries': np.array(track_entries),
-                'valid_indices': track_valid_indices
+                'valid_indices': track_valid_indices,
+                'research': np.array(track_research),
+                'lfps': np.array(track_lfps),
+                'research_indices': track_research_indices,
             }
 
     if len(valid_targets) == 0:
@@ -721,7 +741,10 @@ def transform_surgical_csv(
         current_mer_track_positions[track_type] = {
             'targets': positions['targets'].copy(),
             'entries': positions['entries'].copy(),
-            'valid_indices': positions['valid_indices']
+            'valid_indices': positions['valid_indices'],
+            'research': positions['research'].copy(),
+            'lfps': positions['lfps'].copy(),
+            'research_indices': positions['research_indices'],
         }
 
     for frame_tf, invert in frame_transforms:
@@ -755,6 +778,11 @@ def transform_surgical_csv(
                 current_mer_track_positions[track_type]['entries'], matrix
             )
 
+            for k in ('research', 'lfps'):
+                if len(current_mer_track_positions[track_type][k]):
+                    current_mer_track_positions[track_type][k] = apply_4x4_matrix_transform(
+                        current_mer_track_positions[track_type][k], matrix)
+
     # Then apply ANTs transforms (e.g. CT space -> template space)
     if ants_transforms:
         # Transform both point sets through ANTs
@@ -787,6 +815,11 @@ def transform_surgical_csv(
             current_mer_track_positions[track_type]['entries'] = apply_ants_transforms_to_points(
                 current_mer_track_positions[track_type]['entries'], ants_transforms, use_inverse=ants_invert_flags
             )
+
+            for k in ('research', 'lfps'):
+                if len(current_mer_track_positions[track_type][k]):
+                    current_mer_track_positions[track_type][k] = apply_ants_transforms_to_points(
+                        current_mer_track_positions[track_type][k], ants_transforms, use_inverse=ants_invert_flags)
 
     # Update CSV data with transformed coordinates (2 decimal places)
     for idx, valid_idx in enumerate(valid_indices):
@@ -840,6 +873,11 @@ def transform_surgical_csv(
             csv_data[valid_idx][f'mer_{track_type}_entry_x'] = f"{track_entries[local_idx, 0]:.2f}"
             csv_data[valid_idx][f'mer_{track_type}_entry_y'] = f"{track_entries[local_idx, 1]:.2f}"
             csv_data[valid_idx][f'mer_{track_type}_entry_z'] = f"{track_entries[local_idx, 2]:.2f}"
+
+        for n, valid_idx in enumerate(positions['research_indices']):
+            for a, axis in enumerate('xyz'):
+                csv_data[valid_idx][f'mer_{track_type}_research_target_{axis}'] = f"{positions['research'][n, a]:.2f}"
+                csv_data[valid_idx][f'mer_{track_type}_research_lfp_{axis}'] = f"{positions['lfps'][n, a]:.2f}"
 
     return csv_data
 
