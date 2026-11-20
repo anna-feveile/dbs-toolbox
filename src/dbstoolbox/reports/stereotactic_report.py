@@ -313,6 +313,11 @@ class StereotacticReportGenerator:
                     if lateral[0] < 0:
                         lateral = -lateral
 
+            notes = row.get('notes', '')
+            target_contact = row.get('target_contact')
+            if target_contact is not None:
+                notes += f'<br><strong>Target contact:</strong> {target_contact}'
+
             return {
                 'target': target,
                 'entry': entry,
@@ -329,7 +334,8 @@ class StereotacticReportGenerator:
                 'is_left_hemisphere': is_left_hemisphere,
                 'surgeons': row.get('surgeons', ''),
                 'researchers': row.get('researchers', ''),
-                'notes': row.get('notes', ''),
+                'notes': notes,
+                'target_contact': target_contact,
                 'x_original': row.get('x_original', ''),
                 'y_original': row.get('y_original', ''),
                 'z_original': row.get('z_original', ''),
